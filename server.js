@@ -1,50 +1,50 @@
-// === server.js ===
 import express from 'express';
 import cors from 'cors';
-import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
+import { MongoClient } from 'mongodb';
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const uri = process.env.MONGODB_URI;
-
-const client = new MongoClient(uri);
-
 app.use(cors());
 app.use(express.json());
 
-let db;
+const client = new MongoClient(process.env.MONGO_URI);
+let db, drivers;
+
+async function connectDB() {
+  await client.connect();
+  db = client.db('spotter');
+  drivers = db.collection('drivers');
+  console.log('🟢 MongoDB ühendatud');
+}
 
 app.get('/api/drivers', async (req, res) => {
-  try {
-    const drivers = await db.collection('drivers').find({ competitionClass: 'Pro' }).toArray();
-    res.json(drivers);
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch drivers' });
-  }
+  const list = await drivers.find({}).toArray();
+  res.json(list);
 });
 
-app.post('/api/drivers/:id/times', async (req, res) => {
-  const { time, note } = req.body;
-  try {
-    const result = await db.collection('drivers').updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $push: { times: { time, note } } }
-    );
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to add time' });
-  }
+app.post('/api/drivers', async (req, res) => {
+  const { name } = req.body;
+  const newDriver = { name, times: [], running: false, startTime: null };
+  await drivers.insertOne(newDriver);
+  res.json(newDriver);
 });
 
-app.listen(port, async () => {
-  try {
-    await client.connect();
-    db = client.db('spotter');
-    console.log(`Server running on port ${port}`);
-  } catch (err) {
-    console.error('Failed to connect to MongoDB', err);
-  }
+app.put('/api/drivers/:name', async (req, res) => {
+  const { name } = req.params;
+  const { times, running, startTime } = req.body;
+  await drivers.updateOne({ name }, { $set: { times, running, startTime } });
+  res.json({ success: true });
+});
+
+app.delete('/api/drivers/:name', async (req, res) => {
+  const { name } = req.params;
+  await drivers.deleteOne({ name });
+  res.json({ success: true });
+});
+
+connectDB().then(() => {
+  app.listen(port, () => console.log(`🚀 Server käivitati: http://localhost:${port}`));
 });
