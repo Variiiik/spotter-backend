@@ -160,39 +160,40 @@ app.post('/api/sync-driver/:class', async (req, res) => {
 
 app.get('/api/analysis/top', async (req, res) => {
   try {
-    const topDrivers = await drivers.aggregate([
-      { $match: { times: { $exists: true, $ne: [] } } },
-      {
-        $addFields: {
-          bestTime: { $min: "$times.time" },
-          averageTime: { $avg: "$times.time" },
-          attemptCount: { $size: "$times" }
-        }
-      },
-      { $sort: { bestTime: 1 } },
-      { $limit: 10 }, // võid muuta palju soovid
-      {
-        $lookup: {
-          from: 'driverDetails',
-          localField: 'competitorId',
-          foreignField: 'competitorId',
-          as: 'details'
-        }
-      },
-      { $unwind: { path: "$details", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          _id: 0,
-          competitorName: 1,
-          competitionNumbers: 1,
-          bestTime: 1,
-          averageTime: 1,
-          attemptCount: 1
+    const allDrivers = await drivers.find({ times: { $exists: true, $ne: [] } }).toArray();
+
+    const enriched = allDrivers.map(d => {
+      const times = (d.times || []).map(t => t.time).sort((a, b) => a - b);
+      const attemptCount = times.length;
+      const bestTime = Math.min(...times);
+      const averageTime = times.reduce((a, b) => a + b, 0) / attemptCount;
+
+      let bestConsecutiveAvg3 = null;
+      if (attemptCount >= 3) {
+        bestConsecutiveAvg3 = Infinity;
+        for (let i = 0; i <= times.length - 3; i++) {
+          const avg3 = (times[i] + times[i + 1] + times[i + 2]) / 3;
+          if (avg3 < bestConsecutiveAvg3) bestConsecutiveAvg3 = avg3;
         }
       }
-    ]).toArray();
 
-    res.json(topDrivers);
+      return {
+        competitorId: d.competitorId,
+        competitorName: d.competitorName,
+        competitionNumbers: d.competitionNumbers,
+        bestTime,
+        averageTime,
+        attemptCount,
+        bestConsecutiveAvg3
+      };
+    });
+
+    const sorted = enriched
+      .filter(d => d.bestConsecutiveAvg3 !== null)
+      .sort((a, b) => a.bestConsecutiveAvg3 - b.bestConsecutiveAvg3)
+      .slice(0, 10);
+
+    res.json(sorted);
   } catch (err) {
     console.error('❌ Analüüsi viga:', err);
     res.status(500).send("Analüüsi laadimine ebaõnnestus");
