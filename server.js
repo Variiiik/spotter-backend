@@ -19,6 +19,8 @@ async function connectDB() {
   db = client.db('spotter');
   drivers = db.collection('drivers');
   driverDetails = db.collection('driverDetails');
+  await drivers.createIndex({ competitorId: 1 }, { unique: true });
+  await driverDetails.createIndex({ competitorId: 1 }, { unique: true });
   console.log('🟢 MongoDB ühendatud');
 }
 
