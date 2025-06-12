@@ -160,29 +160,36 @@ app.post('/api/sync-driver/:class', async (req, res) => {
 
 app.get('/api/analysis/top', async (req, res) => {
   try {
-    const topDrivers = await driverDetails.aggregate([
+    const topDrivers = await drivers.aggregate([
       { $match: { times: { $exists: true, $ne: [] } } },
-      { $project: {
-        competitorId: 1,
-        bestTime: { $min: "$times" }
-      }},
-      { $sort: { bestTime: 1 } },
-      { $limit: 5 },
       {
-        $lookup: {
-          from: 'drivers',
-          localField: 'competitorId',
-          foreignField: 'competitorId',
-          as: 'driver'
+        $addFields: {
+          bestTime: { $min: "$times.time" },
+          averageTime: { $avg: "$times.time" },
+          attemptCount: { $size: "$times" }
         }
       },
-      { $unwind: '$driver' },
-      { $project: {
-        _id: 0,
-        competitorName: '$driver.competitorName',
-        competitionNumbers: '$driver.competitionNumbers',
-        bestTime: 1
-      }}
+      { $sort: { bestTime: 1 } },
+      { $limit: 10 }, // võid muuta palju soovid
+      {
+        $lookup: {
+          from: 'driverDetails',
+          localField: 'competitorId',
+          foreignField: 'competitorId',
+          as: 'details'
+        }
+      },
+      { $unwind: { path: "$details", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          competitorName: 1,
+          competitionNumbers: 1,
+          bestTime: 1,
+          averageTime: 1,
+          attemptCount: 1
+        }
+      }
     ]).toArray();
 
     res.json(topDrivers);
@@ -191,6 +198,7 @@ app.get('/api/analysis/top', async (req, res) => {
     res.status(500).send("Analüüsi laadimine ebaõnnestus");
   }
 });
+
 
 
 connectDB().then(() => {
