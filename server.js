@@ -57,20 +57,23 @@ app.post('/api/sync-driver/:class', async (req, res) => {
     const listRes = await axios.get(
       'https://driftpoint.net/api/v1/appUsers/filterValues/08dd9ba1-0b2e-491c-8244-03d616b707b7'
     );
-
-    const filtered = listRes.data
-      .filter(d => d.competitionClass === competitionClass)
-      .map(d => ({
-        competitorId: d.competitorId,
-        competitorName: d.competitorName,
-        competitionNumbers: d.competitionNumbers,
-        mostCommonNr: d.mostCommonNr,
-        nationality: d.countryCode,
-        competitionClass: d.competitionClass,
-        status: 1
-      }));
+    
+    const list = listRes.data[competitionClass];
+    if (!Array.isArray(list)) {
+      return res.status(500).send("Vigane andmestruktuur API vastuses");
+    }
+    const filtered = list.map(d => ({
+      competitorId: d.competitorId,
+      competitorName: d.competitorName,
+      competitionNumbers: d.competitionNumbers,
+      mostCommonNr: d.mostCommonNr,
+      nationality: d.nationality,
+      competitionClass: d.competitionClass,
+      status: d.status ?? 1
+    }));
 
     const details = [];
+
     for (const d of filtered) {
       const detailRes = await axios.get(
         `https://driftpoint.net/api/v1/appUsers/GetUserInfos/${d.competitorId}/2025/08da52ef-5c42-4c8a-82bf-b4b91737683d`
