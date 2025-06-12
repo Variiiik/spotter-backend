@@ -74,6 +74,18 @@ app.get('/api/drivers/:id', async (req, res) => {
   res.json(driver);
 });
 
+app.post('/api/drivers/:id/time', async (req, res) => {
+  const { id } = req.params;
+  const { time, note } = req.body;
+  if (typeof time !== 'number') return res.status(400).send("Aeg peab olema number");
+
+  const update = await drivers.updateOne(
+    { competitorId: id },
+    { $push: { times: { time, note, date: new Date() } } }
+  );
+  res.json({ modified: update.modifiedCount });
+});
+
 app.post('/api/sync-driver/:class', async (req, res) => {
   const competitionClass = req.params.class;
   if (!["Pro", "Pro2"].includes(competitionClass)) return res.status(400).send("Vigane klass");
