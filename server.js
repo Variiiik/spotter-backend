@@ -86,6 +86,18 @@ app.post('/api/drivers/:id/time', async (req, res) => {
   res.json({ modified: update.modifiedCount });
 });
 
+app.delete('/api/drivers/:id/times', async (req, res) => {
+  const result = await driverDetails.updateOne(
+    { competitorId: req.params.id },
+    { $set: { times: [] } }
+  );
+
+  if (result.modifiedCount === 0) {
+    return res.status(404).send('Sõitjat ei leitud või ajad juba tühjad');
+  }
+
+  res.status(200).send('Ajad kustutatud');
+});
 app.post('/api/sync-driver/:class', async (req, res) => {
   const competitionClass = req.params.class;
   if (!["Pro", "Pro2"].includes(competitionClass)) return res.status(400).send("Vigane klass");
