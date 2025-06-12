@@ -190,12 +190,11 @@ app.get('/api/analysis/top', async (req, res) => {
         bestTime,
         averageTime,
         attemptCount,
-        bestConsecutiveAvg3
+        bestConsecutiveAvg3: bestConsecutiveAvg3 ?? averageTime // fallback kui < 3 katset
       };
-    }).filter(Boolean); // eemalda nullid
+    }).filter(Boolean);
 
     const sorted = enriched
-      .filter(d => d.bestConsecutiveAvg3 !== null)
       .sort((a, b) => a.bestConsecutiveAvg3 - b.bestConsecutiveAvg3)
       .slice(0, 10);
 
@@ -205,6 +204,7 @@ app.get('/api/analysis/top', async (req, res) => {
     res.status(500).send("Analüüsi laadimine ebaõnnestus");
   }
 });
+
 
 
 
