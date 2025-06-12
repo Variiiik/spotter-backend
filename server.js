@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { MongoClient } from 'mongodb';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -21,8 +22,8 @@ async function connectDB() {
 }
 
 app.get('/api/drivers', async (req, res) => {
-  const drivers = await db.collection('drivers').find({ competitionClass: 'Pro' }).toArray();
-  res.json(drivers);
+  const list = await drivers.find({ competitionClass: 'Pro' }).toArray();
+  res.json(list);
 });
 
 app.post('/api/drivers', async (req, res) => {
@@ -37,7 +38,7 @@ app.post('/api/drivers', async (req, res) => {
     competitionClass: "Pro",
     status: 1
   };
-  await db.collection('drivers').insertOne(newDriver);
+  await drivers.insertOne(newDriver);
   res.status(201).send("Lisatud");
 });
 
