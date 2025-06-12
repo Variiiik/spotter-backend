@@ -87,17 +87,19 @@ app.post('/api/drivers/:id/time', async (req, res) => {
 });
 
 app.delete('/api/drivers/:id/times', async (req, res) => {
-  const result = await driverDetails.updateOne(
-    { competitorId: req.params.id },
-    { $set: { times: [] } }
-  );
-
-  if (result.modifiedCount === 0) {
-    return res.status(404).send('Sõitjat ei leitud või ajad juba tühjad');
+  const id = req.params.id;
+  try {
+    await db.collection('drivers').updateOne(
+      { competitorId: id },
+      { $set: { times: [] } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ Aegade kustutamine ebaõnnestus:', err);
+    res.status(500).send('Serveri viga');
   }
-
-  res.status(200).send('Ajad kustutatud');
 });
+
 app.post('/api/sync-driver/:class', async (req, res) => {
   const competitionClass = req.params.class;
   //if (!["Pro", "Pro2"].includes(competitionClass)) return res.status(400).send("Vigane klass");
