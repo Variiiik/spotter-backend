@@ -49,8 +49,8 @@ app.get('/api/drivers/:id', async (req, res) => {
   res.json(driver);
 });
 
-app.post('/api/sync-drivers/:class', async (req, res) => {
-  const competitionClass = await req.params.class; // "Pro" või "Pro2"
+app.post('/api/sync-driver/:class', async (req, res) => {
+  const competitionClass = req.params.class;
   if (!["Pro", "Pro2"].includes(competitionClass)) return res.status(400).send("Vigane klass");
 
   try {
