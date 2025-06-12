@@ -100,7 +100,8 @@ app.delete('/api/drivers/:id/times', async (req, res) => {
 });
 app.post('/api/sync-driver/:class', async (req, res) => {
   const competitionClass = req.params.class;
-  if (!["Pro", "Pro2"].includes(competitionClass)) return res.status(400).send("Vigane klass");
+  //if (!["Pro", "Pro2"].includes(competitionClass)) return res.status(400).send("Vigane klass");
+  if (competitionClass !== "Pro") return res.status(400).send("Ainult Pro klass lubatud");
 
   try {
     const listRes = await axios.get(
