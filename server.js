@@ -210,7 +210,21 @@ app.get('/api/analysis/top', async (req, res) => {
     res.status(500).send("Analüüsi laadimine ebaõnnestus");
   }
 });
+app.patch('/api/drivers/:id/note', async (req, res) => {
+  const { id } = req.params;
+  const { note } = req.body;
 
+  try {
+    const result = await drivers.updateOne(
+      { competitorId: id },
+      { $set: { note: note || '' } }
+    );
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('Märkuse salvestus error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 
 
