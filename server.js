@@ -57,29 +57,32 @@ app.post('/api/sync-driver/:class', async (req, res) => {
     const listRes = await axios.get(
       'https://driftpoint.net/api/v1/appUsers/filterValues/08dd9ba1-0b2e-491c-8244-03d616b707b7'
     );
-    
+
     const list = listRes.data[competitionClass];
-    if (!Array.isArray(list)) {
-      return res.status(500).send("Vigane andmestruktuur API vastuses");
-    }
-    const filtered = list.map(d => ({
-      competitorId: d.competitorId,
-      competitorName: d.competitorName,
-      competitionNumbers: d.competitionNumbers,
-      mostCommonNr: d.mostCommonNr,
-      nationality: d.nationality,
-      competitionClass: d.competitionClass,
-      status: d.status ?? 1
-    }));
+    if (!Array.isArray(list)) return res.status(500).send("Vigane andmestruktuur API vastuses");
 
-    const details = [];
+    for (const d of list) {
+      const driverDoc = {
+        competitorId: d.competitorId,
+        competitorName: d.competitorName,
+        competitionNumbers: d.competitionNumbers,
+        mostCommonNr: d.mostCommonNr,
+        nationality: d.nationality,
+        competitionClass: d.competitionClass,
+        status: d.status ?? 1
+      };
 
-    for (const d of filtered) {
+      await drivers.updateOne(
+        { competitorId: driverDoc.competitorId },
+        { $set: driverDoc },
+        { upsert: true }
+      );
+
       const detailRes = await axios.get(
         `https://driftpoint.net/api/v1/appUsers/GetUserInfos/${d.competitorId}/2025/08da52ef-5c42-4c8a-82bf-b4b91737683d`
       );
 
-      details.push({
+      const detailDoc = {
         competitorId: d.competitorId,
         countryCode: d.nationality,
         car: detailRes.data.car,
@@ -87,16 +90,16 @@ app.post('/api/sync-driver/:class', async (req, res) => {
         tandemsBestResult: detailRes.data.tandemsBestResult,
         qualificationsBestResult: detailRes.data.qualificationsBestResult,
         qualificationsHighestScore: detailRes.data.qualificationsHighestScore
-      });
+      };
+
+      await driverDetails.updateOne(
+        { competitorId: d.competitorId },
+        { $set: detailDoc },
+        { upsert: true }
+      );
     }
 
-    await drivers.deleteMany({ competitionClass });
-    await drivers.insertMany(filtered);
-
-    await driverDetails.deleteMany({ competitorId: { $in: filtered.map(d => d.competitorId) } });
-    await driverDetails.insertMany(details);
-
-    res.json({ success: true, count: filtered.length });
+    res.json({ success: true, count: list.length });
   } catch (err) {
     console.error('❌ Sünkroniseerimisviga:', err);
     res.status(500).send('Sünkroniseerimine ebaõnnestus');
