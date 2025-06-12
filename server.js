@@ -163,8 +163,14 @@ app.get('/api/analysis/top', async (req, res) => {
     const allDrivers = await drivers.find({ times: { $exists: true, $ne: [] } }).toArray();
 
     const enriched = allDrivers.map(d => {
-      const times = (d.times || []).map(t => t.time).sort((a, b) => a - b);
+      const times = (Array.isArray(d.times) ? d.times : [])
+        .map(t => typeof t.time === 'number' ? t.time : null)
+        .filter(t => t !== null)
+        .sort((a, b) => a - b);
+
       const attemptCount = times.length;
+      if (attemptCount === 0) return null;
+
       const bestTime = Math.min(...times);
       const averageTime = times.reduce((a, b) => a + b, 0) / attemptCount;
 
@@ -186,7 +192,7 @@ app.get('/api/analysis/top', async (req, res) => {
         attemptCount,
         bestConsecutiveAvg3
       };
-    });
+    }).filter(Boolean); // eemalda nullid
 
     const sorted = enriched
       .filter(d => d.bestConsecutiveAvg3 !== null)
@@ -199,6 +205,7 @@ app.get('/api/analysis/top', async (req, res) => {
     res.status(500).send("Analüüsi laadimine ebaõnnestus");
   }
 });
+
 
 
 
