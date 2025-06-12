@@ -21,15 +21,24 @@ async function connectDB() {
 }
 
 app.get('/api/drivers', async (req, res) => {
-  const list = await drivers.find({}).toArray();
-  res.json(list);
+  const drivers = await db.collection('drivers').find({ competitionClass: 'Pro' }).toArray();
+  res.json(drivers);
 });
 
 app.post('/api/drivers', async (req, res) => {
-  const { name } = req.body;
-  const newDriver = { name, times: [], running: false, startTime: null };
-  await drivers.insertOne(newDriver);
-  res.json(newDriver);
+  const { competitorName } = req.body;
+  if (!competitorName) return res.status(400).send("Nimi puudub");
+  const newDriver = {
+    competitorId: crypto.randomUUID(),
+    competitorName,
+    competitionNumbers: "",
+    mostCommonNr: null,
+    nationality: "EE",
+    competitionClass: "Pro",
+    status: 1
+  };
+  await db.collection('drivers').insertOne(newDriver);
+  res.status(201).send("Lisatud");
 });
 
 app.put('/api/drivers/:name', async (req, res) => {
