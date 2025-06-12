@@ -175,12 +175,17 @@ app.get('/api/analysis/top', async (req, res) => {
       const averageTime = times.reduce((a, b) => a + b, 0) / attemptCount;
 
       let bestConsecutiveAvg3 = null;
+      let isFallback = false;
+
       if (attemptCount >= 3) {
         bestConsecutiveAvg3 = Infinity;
         for (let i = 0; i <= times.length - 3; i++) {
           const avg3 = (times[i] + times[i + 1] + times[i + 2]) / 3;
           if (avg3 < bestConsecutiveAvg3) bestConsecutiveAvg3 = avg3;
         }
+      } else {
+        bestConsecutiveAvg3 = averageTime;
+        isFallback = true;
       }
 
       return {
@@ -190,7 +195,8 @@ app.get('/api/analysis/top', async (req, res) => {
         bestTime,
         averageTime,
         attemptCount,
-        bestConsecutiveAvg3: bestConsecutiveAvg3 ?? averageTime // fallback kui < 3 katset
+        bestConsecutiveAvg3,
+        isFallback
       };
     }).filter(Boolean);
 
@@ -204,6 +210,7 @@ app.get('/api/analysis/top', async (req, res) => {
     res.status(500).send("Analüüsi laadimine ebaõnnestus");
   }
 });
+
 
 
 
