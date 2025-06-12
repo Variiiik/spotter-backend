@@ -156,6 +156,41 @@ app.post('/api/sync-driver/:class', async (req, res) => {
   }
 });
 
+app.get('/api/analysis/top', async (req, res) => {
+  try {
+    const topDrivers = await driverDetails.aggregate([
+      { $match: { times: { $exists: true, $ne: [] } } },
+      { $project: {
+        competitorId: 1,
+        bestTime: { $min: "$times" }
+      }},
+      { $sort: { bestTime: 1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'drivers',
+          localField: 'competitorId',
+          foreignField: 'competitorId',
+          as: 'driver'
+        }
+      },
+      { $unwind: '$driver' },
+      { $project: {
+        _id: 0,
+        competitorName: '$driver.competitorName',
+        competitionNumbers: '$driver.competitionNumbers',
+        bestTime: 1
+      }}
+    ]).toArray();
+
+    res.json(topDrivers);
+  } catch (err) {
+    console.error('❌ Analüüsi viga:', err);
+    res.status(500).send("Analüüsi laadimine ebaõnnestus");
+  }
+});
+
+
 connectDB().then(() => {
   app.listen(port, () => console.log(`🚀 Server käivitatud: http://localhost:${port}`));
 });
