@@ -25,9 +25,31 @@ async function connectDB() {
 }
 
 app.get('/api/drivers', async (req, res) => {
-  const list = await drivers.find({}).toArray();
-  res.json(list);
+  try {
+    const list = await drivers.aggregate([
+      {
+        $lookup: {
+          from: 'driverDetails',
+          localField: 'competitorId',
+          foreignField: 'competitorId',
+          as: 'details'
+        }
+      },
+      {
+        $unwind: {
+          path: '$details',
+          preserveNullAndEmptyArrays: true
+        }
+      }
+    ]).toArray();
+
+    res.json(list);
+  } catch (err) {
+    console.error('❌ Viga sõitjate laadimisel:', err);
+    res.status(500).send('Laadimine ebaõnnestus');
+  }
 });
+
 
 app.post('/api/drivers', async (req, res) => {
   const { competitorName } = req.body;
@@ -44,6 +66,7 @@ app.post('/api/drivers', async (req, res) => {
   await drivers.insertOne(newDriver);
   res.status(201).send("Lisatud");
 });
+
 
 app.get('/api/drivers/:id', async (req, res) => {
   const driver = await driverDetails.findOne({ competitorId: req.params.id });
