@@ -99,6 +99,28 @@ app.delete('/api/drivers/:id/times', async (req, res) => {
     res.status(500).send('Serveri viga');
   }
 });
+// Lisa see olemasolevate app.* käsuridade sekka
+app.delete('/api/drivers/:id/time/:timestamp', async (req, res) => {
+  const { id, timestamp } = req.params;
+
+  try {
+    const targetTime = new Date(Number(timestamp)); // teisenda number -> Date
+
+    const result = await drivers.updateOne(
+      { competitorId: id },
+      { $pull: { times: { date: targetTime } } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ message: 'Aega ei leitud või juba kustutatud.' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Viga aja kustutamisel:', err);
+    res.status(500).json({ message: 'Serveri viga' });
+  }
+});
 
 app.post('/api/sync-driver/:class', async (req, res) => {
   const competitionClass = req.params.class;
