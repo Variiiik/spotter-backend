@@ -220,20 +220,6 @@ app.get('/api/analysis/top', async (req, res) => {
 });
 
 
-    result.sort((a, b) => {
-      if (a.bestConsecutiveAvg3 === null && b.bestConsecutiveAvg3 === null) return 0;
-      if (a.bestConsecutiveAvg3 === null) return 1;
-      if (b.bestConsecutiveAvg3 === null) return -1;
-      return a.bestConsecutiveAvg3 - b.bestConsecutiveAvg3;
-    });
-
-    res.json(result);
-  } catch (err) {
-    console.error('❌ Analüüsi viga:', err);
-    res.status(500).send("Analüüsi laadimine ebaõnnestus");
-  }
-});
-
 app.patch('/api/drivers/:id/note', async (req, res) => {
   const { id } = req.params;
   const { note } = req.body;
