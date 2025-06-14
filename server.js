@@ -182,56 +182,45 @@ app.post('/api/sync-driver/:class', async (req, res) => {
 
 app.get('/api/analysis/top', async (req, res) => {
   try {
-    const allDrivers = await drivers.find({ times: { $exists: true, $ne: [] } }).toArray();
-
-    const enriched = allDrivers.map(d => {
-      const times = (Array.isArray(d.times) ? d.times : [])
-        .map(t => typeof t.time === 'number' ? t.time : null)
-        .filter(t => t !== null)
-        .sort((a, b) => a - b);
-
-      const attemptCount = times.length;
-      if (attemptCount === 0) return null;
-
-      const bestTime = Math.min(...times);
-      const averageTime = times.reduce((a, b) => a + b, 0) / attemptCount;
-
-      let bestConsecutiveAvg3 = null;
-      let isFallback = false;
-
-      if (attemptCount >= 3) {
-        bestConsecutiveAvg3 = Infinity;
-        for (let i = 0; i <= times.length - 3; i++) {
-          const avg3 = (times[i] + times[i + 1] + times[i + 2]) / 3;
-          if (avg3 < bestConsecutiveAvg3) bestConsecutiveAvg3 = avg3;
+    const topDrivers = await drivers.aggregate([
+      { $match: { times: { $exists: true, $ne: [] } } },
+      {
+        $addFields: {
+          bestTime: { $min: "$times.time" },
+          averageTime: { $avg: "$times.time" },
+          attemptCount: { $size: "$times" }
         }
-      } else {
-        bestConsecutiveAvg3 = averageTime;
-        isFallback = true;
+      },
+      { $sort: { averageTime: 1 } },  // maakeseesmise aja järgi
+      // { $limit: 10 },  // <-- eemaldatud
+      {
+        $lookup: {
+          from: 'driverDetails',
+          localField: 'competitorId',
+          foreignField: 'competitorId',
+          as: 'details'
+        }
+      },
+      { $unwind: { path: "$details", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          competitorName: 1,
+          competitionNumbers: 1,
+          bestTime: 1,
+          averageTime: 1,
+          attemptCount: 1
+        }
       }
+    ]).toArray();
 
-      return {
-        competitorId: d.competitorId,
-        competitorName: d.competitorName,
-        competitionNumbers: d.competitionNumbers,
-        bestTime,
-        averageTime,
-        attemptCount,
-        bestConsecutiveAvg3,
-        isFallback
-      };
-    }).filter(Boolean);
-
-    const sorted = enriched
-      .sort((a, b) => a.bestConsecutiveAvg3 - b.bestConsecutiveAvg3)
-      .slice(0, 10);
-
-    res.json(sorted);
+    res.json(topDrivers);
   } catch (err) {
     console.error('❌ Analüüsi viga:', err);
     res.status(500).send("Analüüsi laadimine ebaõnnestus");
   }
 });
+
 app.patch('/api/drivers/:id/note', async (req, res) => {
   const { id } = req.params;
   const { note } = req.body;
