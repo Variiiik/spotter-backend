@@ -210,6 +210,16 @@ app.get('/api/analysis/top', async (req, res) => {
       };
     });
 
+    result.sort((a, b) => a.bestTime - b.bestTime);
+
+    res.json(result);
+  } catch (err) {
+    console.error('❌ Analüüsi viga:', err);
+    res.status(500).send("Analüüsi laadimine ebaõnnestus");
+  }
+});
+
+
     result.sort((a, b) => {
       if (a.bestConsecutiveAvg3 === null && b.bestConsecutiveAvg3 === null) return 0;
       if (a.bestConsecutiveAvg3 === null) return 1;
