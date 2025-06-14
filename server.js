@@ -182,39 +182,42 @@ app.post('/api/sync-driver/:class', async (req, res) => {
 
 app.get('/api/analysis/top', async (req, res) => {
   try {
-    const topDrivers = await drivers.aggregate([
-      { $match: { times: { $exists: true, $ne: [] } } },
-      {
-        $addFields: {
-          bestTime: { $min: "$times.time" },
-          averageTime: { $avg: "$times.time" },
-          attemptCount: { $size: "$times" }
-        }
-      },
-      { $sort: { averageTime: 1 } },  // maakeseesmise aja järgi
-      // { $limit: 10 },  // <-- eemaldatud
-      {
-        $lookup: {
-          from: 'driverDetails',
-          localField: 'competitorId',
-          foreignField: 'competitorId',
-          as: 'details'
-        }
-      },
-      { $unwind: { path: "$details", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          _id: 0,
-          competitorName: 1,
-          competitionNumbers: 1,
-          bestTime: 1,
-          averageTime: 1,
-          attemptCount: 1
+    const allDrivers = await drivers
+      .find({ times: { $exists: true, $not: { $size: 0 } } })
+      .toArray();
+
+    const result = allDrivers.map(driver => {
+      const times = driver.times || [];
+      const sorted = [...times].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const timeValues = sorted.map(t => t.time);
+
+      let bestAvg3 = null;
+      if (timeValues.length >= 3) {
+        bestAvg3 = Infinity;
+        for (let i = 0; i <= timeValues.length - 3; i++) {
+          const avg = (timeValues[i] + timeValues[i + 1] + timeValues[i + 2]) / 3;
+          if (avg < bestAvg3) bestAvg3 = avg;
         }
       }
-    ]).toArray();
 
-    res.json(topDrivers);
+      return {
+        competitorName: driver.competitorName,
+        competitionNumbers: driver.competitionNumbers,
+        bestTime: Math.min(...timeValues),
+        averageTime: timeValues.reduce((sum, val) => sum + val, 0) / timeValues.length,
+        attemptCount: timeValues.length,
+        bestConsecutiveAvg3: Number.isFinite(bestAvg3) ? bestAvg3 : null
+      };
+    });
+
+    result.sort((a, b) => {
+      if (a.bestConsecutiveAvg3 === null && b.bestConsecutiveAvg3 === null) return 0;
+      if (a.bestConsecutiveAvg3 === null) return 1;
+      if (b.bestConsecutiveAvg3 === null) return -1;
+      return a.bestConsecutiveAvg3 - b.bestConsecutiveAvg3;
+    });
+
+    res.json(result);
   } catch (err) {
     console.error('❌ Analüüsi viga:', err);
     res.status(500).send("Analüüsi laadimine ebaõnnestus");
