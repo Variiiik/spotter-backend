@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import { MongoClient } from 'mongodb';
+import { proDrivers } from './proDrivers.js';
+
 
 dotenv.config();
 const app = express();
@@ -23,6 +25,68 @@ async function connectDB() {
   await driverDetails.createIndex({ competitorId: 1 }, { unique: true });
   console.log('🟢 MongoDB ühendatud');
 }
+app.delete('/api/drivers-all', async (req, res) => {
+  const secretKey = req.query.key;
+  if (secretKey !== 'Kustuta') {
+    return res.status(403).send('Ligipääs keelatud');
+  }
+
+  try {
+    const driversResult = await drivers.deleteMany({});
+    const detailsResult = await driverDetails.deleteMany({});
+
+    res.json({
+      success: true,
+      deletedDrivers: driversResult.deletedCount,
+      deletedDetails: detailsResult.deletedCount
+    });
+  } catch (err) {
+    console.error('❌ Sõitjate kustutamine ebaõnnestus:', err);
+    res.status(500).send('Serveri viga');
+  }
+});
+app.post('/api/import-static-drivers', async (req, res) => {
+  try {
+    for (const d of proDrivers) {
+      const driverDoc = {
+        competitorId: d.competitorId,
+        competitorName: d.competitorName,
+        nationality: d.nationality,
+        competitionNumbers: "",
+        mostCommonNr: null,
+        competitionClass: d.competitionClass,
+        status: 1
+      };
+
+      await drivers.updateOne(
+        { competitorId: driverDoc.competitorId },
+        { $set: driverDoc },
+        { upsert: true }
+      );
+
+      const detailDoc = {
+        competitorId: d.competitorId,
+        countryCode: d.nationality,
+        car: d.car,
+        teamName: "",
+        tandemsBestResult: null,
+        qualificationsBestResult: null,
+        qualificationsHighestScore: null
+      };
+
+      await driverDetails.updateOne(
+        { competitorId: d.competitorId },
+        { $set: detailDoc },
+        { upsert: true }
+      );
+    }
+
+    res.json({ success: true, count: proDrivers.length });
+  } catch (err) {
+    console.error('❌ Import ebaõnnestus:', err);
+    res.status(500).send("Viga importimisel");
+  }
+});
 
 app.get('/api/drivers', async (req, res) => {
   try {
