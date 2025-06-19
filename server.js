@@ -46,7 +46,12 @@ app.get('/api/wipe-drivers', async (req, res) => {
   }
 });
 
-app.post('/api/import-static-drivers', async (req, res) => {
+app.get('/api/import-static-drivers', async (req, res) => {
+  const { key } = req.query;
+  if (key !== 'admin123') {
+    return res.status(403).send('❌ Ligipääs keelatud');
+  }
+
   try {
     for (const d of proDrivers) {
       const driverDoc = {
@@ -82,10 +87,10 @@ app.post('/api/import-static-drivers', async (req, res) => {
       );
     }
 
-    res.json({ success: true, count: proDrivers.length });
+    res.json({ success: true, imported: proDrivers.length });
   } catch (err) {
     console.error('❌ Import ebaõnnestus:', err);
-    res.status(500).send("Viga importimisel");
+    res.status(500).send("Serveri viga importimisel");
   }
 });
 
