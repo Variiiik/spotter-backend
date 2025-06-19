@@ -25,10 +25,10 @@ async function connectDB() {
   await driverDetails.createIndex({ competitorId: 1 }, { unique: true });
   console.log('🟢 MongoDB ühendatud');
 }
-app.delete('/api/drivers-all', async (req, res) => {
-  const secretKey = req.query.key;
-  if (secretKey !== 'Kustuta') {
-    return res.status(403).send('Ligipääs keelatud');
+app.get('/api/wipe-drivers', async (req, res) => {
+  const { key } = req.query;
+  if (key !== 'admin123') {
+    return res.status(403).send('❌ Ligipääs keelatud');
   }
 
   try {
@@ -41,10 +41,11 @@ app.delete('/api/drivers-all', async (req, res) => {
       deletedDetails: detailsResult.deletedCount
     });
   } catch (err) {
-    console.error('❌ Sõitjate kustutamine ebaõnnestus:', err);
+    console.error('❌ Kustutamise viga:', err);
     res.status(500).send('Serveri viga');
   }
 });
+
 app.post('/api/import-static-drivers', async (req, res) => {
   try {
     for (const d of proDrivers) {
